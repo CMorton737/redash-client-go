@@ -15,7 +15,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/snowplow-devops/redash-client-go/redash"
@@ -23,8 +22,10 @@ import (
 
 func main() {
 
-	apiKey := os.Getenv("REDASH_API_KEY")
-	hostname := os.Getenv("REDASH_URL")
+	//apiKey := os.Getenv("REDASH_API_KEY")
+	//hostname := os.Getenv("REDASH_URL")
+	apiKey := "45BjcrtGiJYQLrkRIPD1jDlK6hWeJzeAmu89pFeL"
+	hostname := "https://dashboard.uat.qa.mhgi.io"
 
 	log.SetLevel(log.DebugLevel)
 	c, err := redash.NewClient(&redash.Config{RedashURI: hostname, APIKey: apiKey})
@@ -36,7 +37,7 @@ func main() {
 	// --- Data source interactions
 
 	// Get existing Data source
-	dataSource, err := c.GetDataSource(1)
+	dataSource, err := c.GetDataSource(38)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -128,6 +129,30 @@ func main() {
 	}
 	fmt.Println(fmt.Sprintf("GroupAddDataSource>GetDataSource - %#v", dataSource))
 
+	// Create a new query 
+	queryPayload := redash.Query{
+		Name: "Test Query 001 favorite",
+		Query: "SELECT * FROM \"AUDIT\".\"task_log\"",
+		DataSourceID: newDataSource.ID,
+	}
+	newQuery, err := c.CreateQuery(&queryPayload)
+	if err != nil {
+		fmt.Println(fmt.Errorf("Error creating query: %q", err))
+		return
+	}
+	fmt.Println(fmt.Sprintf("CreateQuery - %#v", newQuery))
+	// Update the new query
+	queryPayload.IsDraft = false
+
+	updatedQuery, err := c.UpdateQuery(newQuery.ID, &queryPayload)
+	if err != nil {
+		fmt.Println(fmt.Errorf("Error updating query: %q", err))
+		return
+	}
+	fmt.Println(fmt.Sprintf("UpdateQuery - %#v", updatedQuery))
+
+
+
 	// Remove user from new group
 	err = c.GroupRemoveUser(newGroup.ID, 1)
 	if err != nil {
@@ -161,4 +186,17 @@ func main() {
 		return
 	}
 
+	// Delete group
+	err = c.DeleteGroup(newGroup.ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Delete query
+	err = c.DeleteQuery(newQuery.ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
