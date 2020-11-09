@@ -45,6 +45,7 @@ type QueryList struct {
 		CanEdit           bool        `json:"can_edit,omitempty"`
 		Name              string      `json:"name,omitempty"`
 		CreatedAt         time.Time   `json:"created_at,omitempty"`
+		Options map[string]interface{} `json:"options,omitempty"`
 		Visualizations    []struct {
 			Description string    `json:"description,omitempty"`
 			CreatedAt   time.Time `json:"created_at,omitempty"`
@@ -55,9 +56,6 @@ type QueryList struct {
 			Options     map[string]interface{}    `json:"options,omitempty"`
 			Name string `json:"name,omitempty"`
 		} `json:"visualizations,omitempty"`
-		Options struct {
-			Parameters []interface{} `json:"parameters,omitempty"`
-		} `json:"options,omitempty"`
 	} `json:"results,omitempty"`
 }
 
@@ -81,6 +79,7 @@ type Query struct {
 	CanEdit           bool        `json:"can_edit,omitempty"`
 	Name              string      `json:"name,omitempty"`
 	CreatedAt         time.Time   `json:"created_at,omitempty"`
+	Options map[string]interface{} `json:"options,omitempty"`
 	Visualizations    []struct {
 		Description string    `json:"description,omitempty"`
 		CreatedAt   time.Time `json:"created_at,omitempty"`
@@ -91,9 +90,6 @@ type Query struct {
 		Options     map[string]interface{}    `json:"options,omitempty"`
 		Name string `json:"name,omitempty"`
 	} `json:"visualizations,omitempty"`
-	Options struct {
-		Parameters []interface{} `json:"parameters,omitempty"`
-	} `json:"options,omitempty"`
 }
 
 //GetQueries returns a paginated list of queries

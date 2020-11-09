@@ -1,0 +1,1656 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/snowplow-devops/redash-client-go/redash/client.go (78.6%)</option>
+				
+				<option value="file1">github.com/snowplow-devops/redash-client-go/redash/dashboards.go (0.0%)</option>
+				
+				<option value="file2">github.com/snowplow-devops/redash-client-go/redash/data_sources.go (0.0%)</option>
+				
+				<option value="file3">github.com/snowplow-devops/redash-client-go/redash/groups.go (23.9%)</option>
+				
+				<option value="file4">github.com/snowplow-devops/redash-client-go/redash/queries.go (0.0%)</option>
+				
+				<option value="file5">github.com/snowplow-devops/redash-client-go/redash/users.go (67.5%)</option>
+				
+				<option value="file6">github.com/snowplow-devops/redash-client-go/redash/visualizations.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">//
+// Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+//
+// This program is licensed to you under the Apache License Version 2.0,
+// and you may not use this file except in compliance with the Apache License Version 2.0.
+// You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the Apache License Version 2.0 is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+//
+
+// Package redash is a simple redash client library
+package redash
+
+import (
+        "fmt"
+        "net/http"
+        "net/url"
+        "strings"
+
+        log "github.com/sirupsen/logrus"
+)
+
+// Client contains an active Redash API client
+type Client struct {
+        Config *Config
+}
+
+// Config holds the necessary setup vars
+type Config struct {
+        RedashURI  string
+        APIKey     string
+        StrictMode bool
+}
+
+// NewClient returns a *Client from a valid *Config
+func NewClient(config *Config) (*Client, error) <span class="cov10" title="13">{
+        redashURI, err := url.ParseRequestURI(config.RedashURI)
+        if err != nil </span><span class="cov3" title="2">{
+                return nil, fmt.Errorf("Missing or invalid RedashURI")
+        }</span>
+
+        <span class="cov9" title="11">if redashURI.Scheme != "http" &amp;&amp; redashURI.Scheme != "https" </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("Only HTTP(S) URIs allowed")
+        }</span>
+
+        <span class="cov9" title="10">if config.APIKey == "" </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("Missing APIKey")
+        }</span>
+
+        <span class="cov8" title="9">c := &amp;Client{Config: config}
+        return c, nil</span>
+}
+
+// IsStrict returns true if StrictMode is set. This currently causes
+// data_source creates/updates to fail if extraneous properties
+// are present in the payload.
+func (c *Client) IsStrict() bool <span class="cov0" title="0">{
+        return c.Config.StrictMode
+}</span>
+
+func (c *Client) doRequest(method, path, body string) (*http.Response, error) <span class="cov8" title="9">{
+        requestURI := strings.TrimSuffix(c.Config.RedashURI, "/") + path
+
+        log.Debug(fmt.Sprintf("[DEBUG] %s request to %s", method, path))
+
+        response, err := func() (*http.Response, error) </span><span class="cov8" title="9">{
+                request, err := http.NewRequest(method, requestURI, strings.NewReader(body))
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="9">request.Header.Add("Content-Type", "application/json")
+                request.Header.Set("Authorization", "Key "+c.Config.APIKey)
+
+                return http.DefaultClient.Do(request)</span>
+        }()
+        <span class="cov8" title="9">if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="9">if response.StatusCode &lt; 200 || response.StatusCode &gt; 299 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("HTTP Response: %d", response.StatusCode)
+        }</span>
+
+        <span class="cov8" title="9">return response, nil</span>
+}
+
+func (c *Client) get(path string) (*http.Response, error) <span class="cov6" title="5">{
+        return c.doRequest(http.MethodGet, path, "")
+}</span>
+
+func (c *Client) post(path string, payload string) (*http.Response, error) <span class="cov5" title="4">{
+        return c.doRequest(http.MethodPost, path, payload)
+}</span>
+
+func (c *Client) put(path string, payload string) (*http.Response, error) <span class="cov0" title="0">{
+        return c.doRequest(http.MethodPut, path, payload)
+}</span>
+
+func (c *Client) delete(path string) (*http.Response, error) <span class="cov0" title="0">{
+        return c.doRequest(http.MethodDelete, path, "")
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">//
+// Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+//
+// This program is licensed to you under the Apache License Version 2.0,
+// and you may not use this file except in compliance with the Apache License Version 2.0.
+// You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the Apache License Version 2.0 is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+//
+
+package redash
+
+import (
+        "encoding/json"
+        "io/ioutil"
+        "strconv"
+        "time"
+)
+
+// DashboardList struct
+type DashboardList struct {
+        Count    int `json:"count,omitempty"`
+        Page     int `json:"page,omitempty"`
+        PageSize int `json:"page_size,omitempty"`
+        Results  []struct {
+                Tags       []interface{} `json:"tags,omitempty"`
+                IsArchived bool          `json:"is_archived,omitempty"`
+                UpdatedAt  time.Time     `json:"updated_at,omitempty"`
+                IsFavorite bool          `json:"is_favorite,omitempty"`
+                User       struct {
+                        AuthType            string      `json:"auth_type,omitempty"`
+                        IsDisabled          bool        `json:"is_disabled,omitempty"`
+                        UpdatedAt           time.Time   `json:"updated_at,omitempty"`
+                        ProfileImageURL     string      `json:"profile_image_url,omitempty"`
+                        IsInvitationPending bool        `json:"is_invitation_pending,omitempty"`
+                        Groups              []int       `json:"groups,omitempty"`
+                        ID                  int         `json:"id,omitempty"`
+                        Name                string      `json:"name,omitempty"`
+                        CreatedAt           time.Time   `json:"created_at,omitempty"`
+                        DisabledAt          interface{} `json:"disabled_at,omitempty"`
+                        IsEmailVerified     bool        `json:"is_email_verified,omitempty"`
+                        ActiveAt            time.Time   `json:"active_at,omitempty"`
+                        Email               string      `json:"email,omitempty"`
+                } `json:"user,omitempty"`
+                Layout                  []interface{} `json:"layout,omitempty"`
+                IsDraft                 bool          `json:"is_draft,omitempty"`
+                ID                      int           `json:"id,omitempty"`
+                UserID                  int           `json:"user_id,omitempty"`
+                Name                    string        `json:"name,omitempty"`
+                CreatedAt               time.Time     `json:"created_at,omitempty"`
+                Slug                    string        `json:"slug,omitempty"`
+                Version                 int           `json:"version,omitempty"`
+                Widgets                 interface{}   `json:"widgets,omitempty"`
+                DashboardFiltersEnabled bool          `json:"dashboard_filters_enabled,omitempty"`
+        } `json:"results,omitempty"`
+}
+
+// Dashboard representation
+type Dashboard struct {
+        Tags       []interface{} `json:"tags,omitempty"`
+        IsArchived bool          `json:"is_archived,omitempty"`
+        UpdatedAt  time.Time     `json:"updated_at,omitempty"`
+        IsFavorite bool          `json:"is_favorite,omitempty"`
+        User       struct {
+                AuthType            string      `json:"auth_type,omitempty"`
+                IsDisabled          bool        `json:"is_disabled,omitempty"`
+                UpdatedAt           time.Time   `json:"updated_at,omitempty"`
+                ProfileImageURL     string      `json:"profile_image_url,omitempty"`
+                IsInvitationPending bool        `json:"is_invitation_pending,omitempty"`
+                Groups              []int       `json:"groups,omitempty"`
+                ID                  int         `json:"id,omitempty"`
+                Name                string      `json:"name,omitempty"`
+                CreatedAt           time.Time   `json:"created_at,omitempty"`
+                DisabledAt          interface{} `json:"disabled_at,omitempty"`
+                IsEmailVerified     bool        `json:"is_email_verified,omitempty"`
+                ActiveAt            time.Time   `json:"active_at,omitempty"`
+                Email               string      `json:"email,omitempty"`
+        } `json:"user,omitempty"`
+        Layout                  []interface{} `json:"layout,omitempty"`
+        IsDraft                 bool          `json:"is_draft,omitempty"`
+        ID                      int           `json:"id,omitempty"`
+        UserID                  int           `json:"user_id,omitempty"`
+        Name                    string        `json:"name,omitempty"`
+        CreatedAt               time.Time     `json:"created_at,omitempty"`
+        Slug                    string        `json:"slug,omitempty"`
+        Version                 int           `json:"version,omitempty"`
+        Widgets                 interface{}   `json:"widgets,omitempty"`
+        DashboardFiltersEnabled bool          `json:"dashboard_filters_enabled,omitempty"`
+}
+
+// // DashboardCreatePayload struct for mutating dashboards.
+// type DashboardCreatePayload struct {
+//         Name  string `json:"name"`
+//         Email string `json:"email"`
+// }
+
+// // DashboardUpdatePayload struct for mutating dashboards.
+// type DashboardUpdatePayload struct {
+//         Name   string `json:"name"`
+//         Email  string `json:"email"`
+//         Groups []int  `json:"group_ids"`
+// }
+
+//GetDashboards returns a paginated list of dashboards
+func (c *Client) GetDashboards() (*DashboardList, error) <span class="cov0" title="0">{
+        path := "/api/dashboards"
+
+        response, err := c.get(path)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">body, _ := ioutil.ReadAll(response.Body)
+
+        dashboards := DashboardList{}
+        err = json.Unmarshal(body, &amp;dashboards)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+
+        return &amp;dashboards, nil</span>
+}
+
+//GetDashboard gets a specific Dashboard
+func (c *Client) GetDashboard(id int) (*Dashboard, error) <span class="cov0" title="0">{
+        path := "/api/dashboards/" + strconv.Itoa(id)
+
+        response, err := c.get(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">Dashboard := Dashboard{}
+
+        err = json.Unmarshal(body, &amp;Dashboard)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Dashboard, nil</span>
+}
+
+// // CreateDashboard creates a new Redash dashboard
+// func (c *Client) CreateDashboard(dashboardCreatePayload *DashboardCreatePayload) (*Dashboard, error) {
+//         path := "/api/dashboards"
+
+//         payload, err := json.Marshal(dashboardCreatePayload)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         response, err := c.post(path, string(payload))
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         defer response.Body.Close()
+//         body, err := ioutil.ReadAll(response.Body)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         dashboard := Dashboard{}
+
+//         err = json.Unmarshal(body, &amp;dashboard)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         return &amp;dashboard, nil
+// }
+
+// // UpdateDashboard updates an existing Redash dashboard
+// func (c *Client) UpdateDashboard(id int, dashboardUpdatePayload *DashboardUpdatePayload) (*Dashboard, error) {
+//         path := "/api/dashboards/" + strconv.Itoa(id)
+
+//         payload, err := json.Marshal(dashboardUpdatePayload)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         response, err := c.post(path, string(payload))
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         defer response.Body.Close()
+//         body, err := ioutil.ReadAll(response.Body)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         dashboard := Dashboard{}
+
+//         err = json.Unmarshal(body, &amp;dashboard)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         return &amp;dashboard, nil
+// }
+
+// //DisableDashboard disables an active dashboard.
+// func (c *Client) DisableDashboard(id int) error {
+//         path := "/api/dashboards/" + strconv.Itoa(id) + "/disable"
+
+//         response, err := c.post(path, "")
+//         if err != nil {
+//                 return err
+//         }
+
+//         defer response.Body.Close()
+//         _, err = ioutil.ReadAll(response.Body)
+//         if err != nil {
+//                 return err
+//         }
+
+//         return nil
+// }
+
+// //SearchDashboards finds a list of dashboards matching a string (searches `name` and `email` fields)
+// func (c *Client) SearchDashboards(term string) (*DashboardList, error) {
+//         path := "/api/dashboards?q=" + term
+
+//         response, err := c.get(path)
+
+//         if err != nil {
+//                 return nil, err
+//         }
+//         body, _ := ioutil.ReadAll(response.Body)
+
+//         dashboards := DashboardList{}
+//         err = json.Unmarshal(body, &amp;dashboards)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         defer response.Body.Close()
+
+//         return &amp;dashboards, nil
+// }
+
+// // GetDashboardByEmail returns a single  dashboard from their email address
+// func (c *Client) GetDashboardByEmail(email string) (*Dashboard, error) {
+
+//         results, err := c.SearchDashboards(email)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         for _, result := range results.Results {
+//                 if result.Email != "" &amp;&amp; result.Email == email {
+//                         return c.GetDashboard(result.ID)
+//                 }
+//         }
+
+//         return nil, fmt.Errorf("No dashboard found with email address: %s", email)
+// }
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">//
+// Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+//
+// This program is licensed to you under the Apache License Version 2.0,
+// and you may not use this file except in compliance with the Apache License Version 2.0.
+// You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the Apache License Version 2.0 is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+//
+
+package redash
+
+import (
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+        "strconv"
+
+        log "github.com/sirupsen/logrus"
+)
+
+// DataSource struct
+type DataSource struct {
+        ID                 int                    `json:"id,omitempty"`
+        Name               string                 `json:"name,omitempty"`
+        ScheduledQueueName string                 `json:"scheduled_queue_name,omitempty"`
+        QueueName          string                 `json:"queue_name,omitempty"`
+        Options            map[string]interface{} `json:"options,omitempty"`
+        Paused             int                    `json:"paused,omitempty"`
+        PauseReason        string                 `json:"pause_reason,omitempty"`
+        Type               string                 `json:"type,omitempty"`
+        Syntax             string                 `json:"syntax,omitempty"`
+        Groups             map[int]bool           `json:"groups,omitempty"`
+}
+
+// DataSourceType struct
+type DataSourceType struct {
+        Type                string `json:"type"`
+        Name                string `json:"name,omitempty"`
+        ConfigurationSchema struct {
+                Secret     []string                               `json:"secret,omitempty"`
+                Required   []string                               `json:"required,omitempty"`
+                Type       string                                 `json:"type,omitempty"`
+                Order      []string                               `json:"order,omitempty"`
+                Properties map[string]DataSourceTypePropertyField `json:"properties,omitempty"`
+        } `json:"configuration_schema,omitempty"`
+}
+
+// DataSourceTypePropertyField struct
+type DataSourceTypePropertyField struct {
+        Type    string
+        Title   string
+        Default interface{}
+}
+
+//GetDataSources gets an array of all DataSources available
+func (c *Client) GetDataSources() (*[]DataSource, error) <span class="cov0" title="0">{
+        path := "/api/data_sources"
+
+        response, err := c.get(path)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, _ := ioutil.ReadAll(response.Body)
+
+        dataSources := []DataSource{}
+        err = json.Unmarshal(body, &amp;dataSources)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;dataSources, nil</span>
+}
+
+//GetDataSource gets a specific DataSource
+func (c *Client) GetDataSource(id int) (*DataSource, error) <span class="cov0" title="0">{
+        path := "/api/data_sources/" + strconv.Itoa(id)
+
+        response, err := c.get(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">dataSource := DataSource{}
+
+        err = json.Unmarshal(body, &amp;dataSource)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;dataSource, nil</span>
+}
+
+//GetDataSourceTypes gets all available types with configuration details
+func (c *Client) GetDataSourceTypes() ([]DataSourceType, error) <span class="cov0" title="0">{
+        path := "/api/data_sources/types"
+
+        response, err := c.get(path)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, _ := ioutil.ReadAll(response.Body)
+
+        dataSourceTypes := []DataSourceType{}
+        err = json.Unmarshal(body, &amp;dataSourceTypes)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return dataSourceTypes, nil</span>
+}
+
+// SanitizeDataSourceOptions checks the validity of the options field in a
+// DataSource.Option against Redash's API and cleans up when possible
+func (c *Client) SanitizeDataSourceOptions(dataSource *DataSource) (*DataSource, error) <span class="cov0" title="0">{
+        dataSourceTypes, err := c.GetDataSourceTypes()
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println(err)
+        }</span>
+
+        <span class="cov0" title="0">for _, dst := range dataSourceTypes </span><span class="cov0" title="0">{
+                if dst.Type == dataSource.Type </span><span class="cov0" title="0">{
+
+                        for _, required := range dst.ConfigurationSchema.Required </span><span class="cov0" title="0">{
+                                // does dataSource.Options have everything in configuration_schema.required[] ?
+                                _, exists := dataSource.Options[required]
+                                if !exists </span><span class="cov0" title="0">{
+                                        return nil, fmt.Errorf("Required field missing: " + required)
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">for propName, propVal := range dataSource.Options </span><span class="cov0" title="0">{
+                                // does dataSource.Options only have what's in configuration_schema.properties[]?
+                                _, exists := dst.ConfigurationSchema.Properties[propName]
+                                if !exists </span><span class="cov0" title="0">{
+                                        if c.IsStrict() </span><span class="cov0" title="0">{
+                                                return nil, fmt.Errorf("Invalid field (%s) for type: %s", propName, dataSource.Type)
+                                        }</span>
+
+                                        <span class="cov0" title="0">log.Warn(fmt.Sprintf("[WARN] Ignoring invalid field (%s) for type: %s", propName, dataSource.Type))
+                                        delete((*dataSource).Options, propName)
+                                        continue</span>
+                                }
+
+                                // is the input value a valid data type?
+                                <span class="cov0" title="0">switch propVal.(type) </span>{
+                                case int:<span class="cov0" title="0">
+                                        if dst.ConfigurationSchema.Properties[propName].Type != "number" </span><span class="cov0" title="0">{
+                                                return nil, fmt.Errorf("Invalid value type for %s", propName)
+                                        }</span>
+                                case string:<span class="cov0" title="0">
+                                        if dst.ConfigurationSchema.Properties[propName].Type != "string" </span><span class="cov0" title="0">{
+                                                return nil, fmt.Errorf("Invalid value type for %s", propName)
+                                        }</span>
+                                case bool:<span class="cov0" title="0">
+                                        if dst.ConfigurationSchema.Properties[propName].Type != "boolean" </span><span class="cov0" title="0">{
+                                                return nil, fmt.Errorf("Invalid value type for %s", propName)
+                                        }</span>
+                                default:<span class="cov0" title="0">
+                                        return nil, fmt.Errorf("Invalid value type for %s", propName)</span>
+                                }
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">return dataSource, nil</span>
+}
+
+//CreateDataSource creates a new DataSource
+func (c *Client) CreateDataSource(dataSourcePayload *DataSource) (*DataSource, error) <span class="cov0" title="0">{
+        path := "/api/data_sources"
+
+        dataSourcePayload, err := c.SanitizeDataSourceOptions(dataSourcePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">payload, err := json.Marshal(dataSourcePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">dataSource := DataSource{}
+
+        err = json.Unmarshal(body, &amp;dataSource)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;dataSource, nil</span>
+}
+
+//UpdateDataSource Updates an existing DataSource
+func (c *Client) UpdateDataSource(id int, dataSourcePayload *DataSource) (*DataSource, error) <span class="cov0" title="0">{
+        path := "/api/data_sources/" + strconv.Itoa(id)
+
+        dataSourcePayload, err := c.SanitizeDataSourceOptions(dataSourcePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">payload, err := json.Marshal(dataSourcePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">dataSource := DataSource{}
+
+        err = json.Unmarshal(body, &amp;dataSource)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;dataSource, nil</span>
+}
+
+//DeleteDataSource deletes a specific DataSource
+func (c *Client) DeleteDataSource(id int) error <span class="cov0" title="0">{
+        path := "/api/data_sources/" + strconv.Itoa(id)
+
+        _, err := c.delete(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">//
+// Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+//
+// This program is licensed to you under the Apache License Version 2.0,
+// and you may not use this file except in compliance with the Apache License Version 2.0.
+// You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the Apache License Version 2.0 is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+//
+
+package redash
+
+import (
+        "encoding/json"
+        "io/ioutil"
+        "strconv"
+        "time"
+)
+
+// Group struct
+type Group struct {
+        CreatedAt   time.Time `json:"created_at,omitempty"`
+        Permissions []string  `json:"permissions,omitempty"`
+        Type        string    `json:"type,omitempty"`
+        ID          int       `json:"id,omitempty"`
+        Name        string    `json:"name,omitempty"`
+}
+
+// GroupUser struct
+type GroupUser struct {
+        MemberID int `json:"user_id"`
+}
+
+// GroupDataSource struct
+type GroupDataSource struct {
+        DataSourceID int `json:"data_source_id"`
+}
+
+// GroupCreatePayload struct
+type GroupCreatePayload struct {
+        Name string `json:"name"`
+}
+
+// GetGroups returns a list of Redash groups
+func (c *Client) GetGroups() (*[]Group, error) <span class="cov0" title="0">{
+        path := "/api/groups"
+
+        response, err := c.get(path)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, _ := ioutil.ReadAll(response.Body)
+
+        groups := []Group{}
+        err = json.Unmarshal(body, &amp;groups)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;groups, nil</span>
+}
+
+// GetGroup returns an individual Redash group
+func (c *Client) GetGroup(id int) (*Group, error) <span class="cov8" title="1">{
+        path := "/api/groups/" + strconv.Itoa(id)
+
+        response, err := c.get(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">group := Group{}
+
+        err = json.Unmarshal(body, &amp;group)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return &amp;group, nil</span>
+}
+
+// CreateGroup creates a new Redash group
+func (c *Client) CreateGroup(groupPayload *GroupCreatePayload) (*Group, error) <span class="cov8" title="1">{
+        path := "/api/groups"
+
+        payload, err := json.Marshal(groupPayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">group := Group{}
+
+        err = json.Unmarshal(body, &amp;group)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return &amp;group, nil</span>
+}
+
+// UpdateGroup updates an existing Redash group
+func (c *Client) UpdateGroup(id int, group *Group) (*Group, error) <span class="cov0" title="0">{
+        path := "/api/groups/" + strconv.Itoa(id)
+
+        payload, err := json.Marshal(group)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">err = json.Unmarshal(body, &amp;group)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return group, nil</span>
+}
+
+// DeleteGroup deletes a Redash group
+func (c *Client) DeleteGroup(id int) error <span class="cov0" title="0">{
+        path := "/api/groups/" + strconv.Itoa(id)
+
+        _, err := c.delete(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// GroupAddUser adds a user to a Redash group
+func (c *Client) GroupAddUser(groupID int, userID int) error <span class="cov0" title="0">{
+        path := "/api/groups/" + strconv.Itoa(groupID) + "/members"
+
+        user := GroupUser{userID}
+        payload, err := json.Marshal(user)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">defer response.Body.Close()
+
+        return nil</span>
+}
+
+// GroupRemoveUser removes a user from a Redash group
+func (c *Client) GroupRemoveUser(groupID int, userID int) error <span class="cov0" title="0">{
+        path := "/api/groups/" + strconv.Itoa(groupID) + "/members/" + strconv.Itoa(userID)
+
+        response, err := c.delete(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">defer response.Body.Close()
+
+        return nil</span>
+}
+
+// GroupAddDataSource adds a Data Source to a Redash group
+func (c *Client) GroupAddDataSource(groupID int, dataSourceID int) error <span class="cov0" title="0">{
+        path := "/api/groups/" + strconv.Itoa(groupID) + "/data_sources"
+
+        dataSource := GroupDataSource{dataSourceID}
+        payload, err := json.Marshal(dataSource)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">defer response.Body.Close()
+
+        return nil</span>
+}
+
+// GroupRemoveDataSource removes a Data Source from a Redash group
+func (c *Client) GroupRemoveDataSource(groupID int, dataSourceID int) error <span class="cov0" title="0">{
+        path := "/api/groups/" + strconv.Itoa(groupID) + "/data_sources/" + strconv.Itoa(dataSourceID)
+
+        response, err := c.delete(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">defer response.Body.Close()
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">//
+// Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+//
+// This program is licensed to you under the Apache License Version 2.0,
+// and you may not use this file except in compliance with the Apache License Version 2.0.
+// You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the Apache License Version 2.0 is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+//
+
+package redash
+
+import (
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+        "strconv"
+        "time"
+)
+
+// QueryList struct
+type QueryList struct {
+        Count    int `json:"count"`
+        Page     int `json:"page"`
+        PageSize int `json:"page_size"`
+        Results  []struct {
+                IsArchived        bool        `json:"is_archived,omitempty"`
+                UpdatedAt         time.Time   `json:"updated_at,omitempty"`
+                IsFavorite        bool        `json:"is_favorite,omitempty"`
+                Query             string      `json:"query,omitempty"`
+                ID                int         `json:"id,omitempty"`
+                Description       interface{} `json:"description,omitempty"`
+                Tags              []string    `json:"tags,omitempty"`
+                Version           int         `json:"version,omitempty"`
+                QueryHash         string      `json:"query_hash,omitempty"`
+                APIKey            string      `json:"api_key,omitempty"`
+                DataSourceID      int         `json:"data_source_id,omitempty"`
+                IsSafe            bool        `json:"is_safe,omitempty"`
+                LatestQueryDataID int         `json:"latest_query_data_id,omitempty"`
+                Schedule          interface{} `json:"schedule,omitempty"`
+                IsDraft           bool        `json:"is_draft,omitempty"`
+                CanEdit           bool        `json:"can_edit,omitempty"`
+                Name              string      `json:"name,omitempty"`
+                CreatedAt         time.Time   `json:"created_at,omitempty"`
+                Visualizations    []struct {
+                        Description string    `json:"description,omitempty"`
+                        CreatedAt   time.Time `json:"created_at,omitempty"`
+                        UpdatedAt   time.Time `json:"updated_at,omitempty"`
+                        ID          int       `json:"id,omitempty"`
+                        Type        string    `json:"type,omitempty"`
+                        QueryID     int       `json:"query_id,omitempty"`                        
+                        Options     struct {
+                        } `json:"options,omitempty"`
+                        Name string `json:"name,omitempty"`
+                } `json:"visualizations,omitempty"`
+                Options struct {
+                        Parameters []interface{} `json:"parameters,omitempty"`
+                } `json:"options,omitempty"`
+        } `json:"results,omitempty"`
+}
+
+// Query representation
+type Query struct {
+        IsArchived        bool        `json:"is_archived,omitempty"`
+        UpdatedAt         time.Time   `json:"updated_at,omitempty"`
+        IsFavorite        bool        `json:"is_favorite,omitempty"`
+        Query             string      `json:"query,omitempty"`
+        ID                int         `json:"id,omitempty"`
+        Description       interface{} `json:"description,omitempty"`
+        Tags              []string    `json:"tags,omitempty"`
+        Version           int         `json:"version,omitempty"`
+        QueryHash         string      `json:"query_hash,omitempty"`
+        APIKey            string      `json:"api_key,omitempty"`
+        DataSourceID      int         `json:"data_source_id,omitempty"`
+        IsSafe            bool        `json:"is_safe,omitempty"`
+        LatestQueryDataID int         `json:"latest_query_data_id,omitempty"`
+        Schedule          interface{} `json:"schedule,omitempty"`
+        IsDraft           bool        `json:"is_draft,omitempty"`
+        CanEdit           bool        `json:"can_edit,omitempty"`
+        Name              string      `json:"name,omitempty"`
+        CreatedAt         time.Time   `json:"created_at,omitempty"`
+        Visualizations    []struct {
+                Description string    `json:"description,omitempty"`
+                CreatedAt   time.Time `json:"created_at,omitempty"`
+                UpdatedAt   time.Time `json:"updated_at,omitempty"`
+                ID          int       `json:"id,omitempty"`
+                Type        string    `json:"type,omitempty"`
+                QueryID     int       `json:"query_id,omitempty"`
+                Options     struct {
+                } `json:"options,omitempty"`
+                Name string `json:"name,omitempty"`
+        } `json:"visualizations,omitempty"`
+        Options struct {
+                Parameters []interface{} `json:"parameters,omitempty"`
+        } `json:"options,omitempty"`
+}
+
+//GetQueries returns a paginated list of queries
+func (c *Client) GetQueries() (*QueryList, error) <span class="cov0" title="0">{
+        path := "/api/queries"
+
+        response, err := c.get(path)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">body, _ := ioutil.ReadAll(response.Body)
+
+        queries := QueryList{}
+        err = json.Unmarshal(body, &amp;queries)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+
+        return &amp;queries, nil</span>
+}
+
+//GetQuery gets a specific Query
+func (c *Client) GetQuery(id int) (*Query, error) <span class="cov0" title="0">{
+        path := "/api/queries/" + strconv.Itoa(id)
+
+        response, err := c.get(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">query := Query{}
+
+        err = json.Unmarshal(body, &amp;query)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;query, nil</span>
+}
+
+// CreateQuery creates a new Redash query
+func (c *Client) CreateQuery(queryCreatePayload *Query) (*Query, error) <span class="cov0" title="0">{
+        path := "/api/queries"
+
+        payload, err := json.Marshal(queryCreatePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">fmt.Println(string(payload))
+        response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">query := Query{}
+
+        err = json.Unmarshal(body, &amp;query)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;query, nil</span>
+}
+
+// UpdateQuery updates an existing Redash query
+func (c *Client) UpdateQuery(id int, queryUpdatePayload *Query) (*Query, error) <span class="cov0" title="0">{
+        path := "/api/queries/" + strconv.Itoa(id)
+
+        payload, err := json.Marshal(queryUpdatePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">fmt.Println(string(payload))
+        response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">query := Query{}
+
+        err = json.Unmarshal(body, &amp;query)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;query, nil</span>
+}
+
+//DeleteQuery deletes an active query.
+func (c *Client) DeleteQuery(id int) error <span class="cov0" title="0">{
+        path := "/api/queries/" + strconv.Itoa(id)
+
+        response, err := c.delete(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        _, err = ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// //SearchQueries finds a list of queries matching a string (searches `name` and `email` fields)
+// func (c *Client) SearchQueries(term string) (*QueryList, error) {
+//         path := "/api/queries?q=" + term
+
+//         response, err := c.get(path)
+
+//         if err != nil {
+//                 return nil, err
+//         }
+//         body, _ := ioutil.ReadAll(response.Body)
+
+//         queries := QueryList{}
+//         err = json.Unmarshal(body, &amp;queries)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         defer response.Body.Close()
+
+//         return &amp;queries, nil
+// }
+
+// // GetQueryByEmail returns a single  query from their email address
+// func (c *Client) GetQueryByEmail(email string) (*Query, error) {
+
+//         results, err := c.SearchQueries(email)
+//         if err != nil {
+//                 return nil, err
+//         }
+
+//         for _, result := range results.Results {
+//                 if result.Email != "" &amp;&amp; result.Email == email {
+//                         return c.GetQuery(result.ID)
+//                 }
+//         }
+
+//         return nil, fmt.Errorf("No query found with email address: %s", email)
+// }
+
+///https://dashboard.uat.qa.mhgi.io/api/queries/32/favorite
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">//
+// Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+//
+// This program is licensed to you under the Apache License Version 2.0,
+// and you may not use this file except in compliance with the Apache License Version 2.0.
+// You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the Apache License Version 2.0 is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+//
+
+package redash
+
+import (
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+        "strconv"
+        "time"
+)
+
+// UserList struct
+type UserList struct {
+        Count    int `json:"count"`
+        Page     int `json:"page"`
+        PageSize int `json:"page_size"`
+        Results  []struct {
+                AuthType            string    `json:"auth_type,omitempty"`
+                IsDisabled          bool      `json:"is_disabled,omitempty"`
+                UpdatedAt           time.Time `json:"updated_at,omitempty"`
+                ProfileImageURL     string    `json:"profile_image_url,omitempty"`
+                IsInvitationPending bool      `json:"is_invitation_pending,omitempty"`
+                Groups              []struct {
+                        ID   int    `json:"id,omitempty"`
+                        Name string `json:"name,omitempty"`
+                } `json:"groups,omitempty"`
+                ID              int         `json:"id,omitempty"`
+                Name            string      `json:"name,omitempty"`
+                CreatedAt       time.Time   `json:"created_at,omitempty"`
+                DisabledAt      interface{} `json:"disabled_at,omitempty"`
+                IsEmailVerified bool        `json:"is_email_verified,omitempty"`
+                ActiveAt        time.Time   `json:"active_at,omitempty"`
+                Email           string      `json:"email,omitempty"`
+        } `json:"results,omitempty"`
+}
+
+// User representation
+type User struct {
+        AuthType            string      `json:"auth_type,omitempty"`
+        IsDisabled          bool        `json:"is_disabled,omitempty"`
+        UpdatedAt           time.Time   `json:"updated_at,omitempty"`
+        ProfileImageURL     string      `json:"profile_image_url,omitempty"`
+        IsInvitationPending bool        `json:"is_invitation_pending,omitempty"`
+        Groups              []int       `json:"groups,omitempty"`
+        ID                  int         `json:"id,omitempty"`
+        Name                string      `json:"name,omitempty"`
+        CreatedAt           time.Time   `json:"created_at,omitempty"`
+        DisabledAt          interface{} `json:"disabled_at,omitempty"`
+        IsEmailVerified     bool        `json:"is_email_verified,omitempty"`
+        ActiveAt            time.Time   `json:"active_at,omitempty"`
+        Email               string      `json:"email,omitempty"`
+}
+
+// UserCreatePayload struct for mutating users.
+type UserCreatePayload struct {
+        Name  string `json:"name"`
+        Email string `json:"email"`
+}
+
+// UserUpdatePayload struct for mutating users.
+type UserUpdatePayload struct {
+        Name   string `json:"name"`
+        Email  string `json:"email"`
+        Groups []int  `json:"group_ids"`
+}
+
+//GetUsers returns a paginated list of users
+func (c *Client) GetUsers() (*UserList, error) <span class="cov0" title="0">{
+        path := "/api/users"
+
+        response, err := c.get(path)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">body, _ := ioutil.ReadAll(response.Body)
+
+        users := UserList{}
+        err = json.Unmarshal(body, &amp;users)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+
+        return &amp;users, nil</span>
+}
+
+//GetUser gets a specific User
+func (c *Client) GetUser(id int) (*User, error) <span class="cov10" title="2">{
+        path := "/api/users/" + strconv.Itoa(id)
+
+        response, err := c.get(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov10" title="2">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov10" title="2">user := User{}
+
+        err = json.Unmarshal(body, &amp;user)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov10" title="2">return &amp;user, nil</span>
+}
+
+// CreateUser creates a new Redash user
+func (c *Client) CreateUser(userCreatePayload *UserCreatePayload) (*User, error) <span class="cov1" title="1">{
+        path := "/api/users"
+
+        payload, err := json.Marshal(userCreatePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">user := User{}
+
+        err = json.Unmarshal(body, &amp;user)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">return &amp;user, nil</span>
+}
+
+// UpdateUser updates an existing Redash user
+func (c *Client) UpdateUser(id int, userUpdatePayload *UserUpdatePayload) (*User, error) <span class="cov1" title="1">{
+        path := "/api/users/" + strconv.Itoa(id)
+
+        payload, err := json.Marshal(userUpdatePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">user := User{}
+
+        err = json.Unmarshal(body, &amp;user)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">return &amp;user, nil</span>
+}
+
+//DisableUser disables an active user.
+func (c *Client) DisableUser(id int) error <span class="cov1" title="1">{
+        path := "/api/users/" + strconv.Itoa(id) + "/disable"
+
+        response, err := c.post(path, "")
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov1" title="1">defer response.Body.Close()
+        _, err = ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov1" title="1">return nil</span>
+}
+
+//SearchUsers finds a list of users matching a string (searches `name` and `email` fields)
+func (c *Client) SearchUsers(term string) (*UserList, error) <span class="cov10" title="2">{
+        path := "/api/users?q=" + term
+
+        response, err := c.get(path)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov10" title="2">body, _ := ioutil.ReadAll(response.Body)
+
+        users := UserList{}
+        err = json.Unmarshal(body, &amp;users)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov10" title="2">defer response.Body.Close()
+
+        return &amp;users, nil</span>
+}
+
+// GetUserByEmail returns a single  user from their email address
+func (c *Client) GetUserByEmail(email string) (*User, error) <span class="cov10" title="2">{
+
+        results, err := c.SearchUsers(email)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov10" title="2">for _, result := range results.Results </span><span class="cov1" title="1">{
+                if result.Email != "" &amp;&amp; result.Email == email </span><span class="cov1" title="1">{
+                        return c.GetUser(result.ID)
+                }</span>
+        }
+
+        <span class="cov1" title="1">return nil, fmt.Errorf("No user found with email address: %s", email)</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">//
+// Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+//
+// This program is licensed to you under the Apache License Version 2.0,
+// and you may not use this file except in compliance with the Apache License Version 2.0.
+// You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the Apache License Version 2.0 is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+//
+
+package redash
+
+import (
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+        "strconv"
+)
+
+// Visualization representation
+type Visualization struct {
+        Description string `json:"description,omitempty"`
+        ID          int    `json:"id,omitempty"`
+        QueryID     int    `json:"query_id,omitempty"`
+        Name        string `json:"name,omitempty"`
+        Options     struct {
+        } `json:"options,omitempty"`
+        //Options     string `json:"options,omitempty"` 
+        Type        string `json:"type,omitempty"`
+}
+
+
+//GetVisualization gets a specific Visualization
+func (c *Client) GetVisualization(query_id int, id int) (*Visualization, error) <span class="cov0" title="0">{
+        path := "/api/queries/" + strconv.Itoa(query_id)
+
+        response, err := c.get(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">query := Query{}
+
+        err = json.Unmarshal(body, &amp;query)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">for _, x := range query.Visualizations </span><span class="cov0" title="0">{
+                if x.QueryID == query_id </span><span class="cov0" title="0">{
+                        visualization := Visualization {
+                                Description: x.Description,
+                                ID:          x.ID,
+                                QueryID:     x.QueryID,
+                                Name:        x.Name,
+                                Options:     x.Options,
+                                Type:        x.Type,
+                        }
+                        return &amp;visualization, nil
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil, nil</span>        
+}
+
+// CreateVisualization creates a new Redash visualization
+func (c *Client) CreateVisualization(visualizationCreatePayload *Visualization) (*Visualization, error) <span class="cov0" title="0">{
+        path := "/api/visualizations"
+
+        payload, err := json.Marshal(visualizationCreatePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">fmt.Println(string(payload))
+        response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">visualization := Visualization{}
+
+        err = json.Unmarshal(body, &amp;visualization)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;visualization, nil</span>
+}
+
+// UpdateVisualization 
+// updates an existing Redash visualization
+func (c *Client) UpdateVisualization(id int, visualizationUpdatePayload *Visualization) (*Visualization, error) <span class="cov0" title="0">{
+        path := "/api/visualizations/" + strconv.Itoa(id)
+
+        payload, err := json.Marshal(visualizationUpdatePayload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">fmt.Println(string(payload))
+        response, err := c.post(path, string(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        body, err := ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">visualization := Visualization{}
+
+        err = json.Unmarshal(body, &amp;visualization)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;visualization, nil</span>
+}
+
+//DeleteVisualization deletes an active visualization.
+func (c *Client) DeleteVisualization(id int) error <span class="cov0" title="0">{
+        path := "/api/visualizations/" + strconv.Itoa(id)
+
+        response, err := c.delete(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">defer response.Body.Close()
+        _, err = ioutil.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
